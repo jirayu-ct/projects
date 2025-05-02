@@ -1,0 +1,30 @@
+controllers/
+│
+├── auth/
+│   └── authController.js        // login, logout, register
+│
+├── user/
+│   └── userController.js         // จัดการข้อมูลผู้ใช้ (admin, teacher, student, parent)
+│
+├── student/
+│   ├── studentController.js      // จัดการข้อมูลนักเรียน
+│   ├── attendanceController.js   // ข้อมูลการเข้าเรียน
+│   ├── gradeController.js        // ข้อมูลคะแนน
+│   └── behaviorController.js     // พฤติกรรมนักเรียน
+│
+├── teacher/
+│   └── teacherController.js      // จัดการข้อมูลครู
+│
+├── parent/
+│   └── parentController.js       // ข้อมูลผู้ปกครอง
+│
+├── course/
+│   ├── subjectController.js      // วิชาที่เปิดสอน
+│   ├── scheduleController.js     // ตารางเรียน
+│   └── classroomController.js    // ห้องเรียน
+│
+├── activity/
+│   └── activityController.js     // กิจกรรมเสริม
+│
+└── notification/
+    └── notificationController.js // การแจ้งเตือนต่างๆ

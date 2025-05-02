@@ -1,0 +1,387 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  teacher
+  student
+  parent
+}
+
+enum StatusStudent {
+  active // กำลังเรียนอยู่
+  graduated // จบการศึกษา
+  suspended // ถูกพักการเรียน
+  resigned // ลาออก
+  expelled // ถูกไล่ออก
+  transferred // โอนย้าย
+}
+
+enum StatusTeacher {
+  active // กำลังสอนอยู่
+  retired // เกษียณอายุ
+  resigned // ลาออก
+  suspended // ถูกพักการสอน
+  expelled // ถูกไล่ออก
+  transferred // โอนย้าย
+}
+
+enum StatusParent {
+  active // กำลังดูแลอยู่
+  inactive //ยกเลิกการดูแล
+  deceased // เสียชีวิต
+}
+
+enum AdvisorRole {
+  homeroom // ครูประจำชั้น
+  counselor // ครูที่ปรึกษา
+  special // ครูพิเศษ
+  temporary // ครูสอนเฉพาะกิจ
+}
+
+enum AdvisorStatus {
+  active // เคยเป็นที่ปรึกษา
+  inactive //เคยเป็นที่ปรึกษา
+  transferred //เปลี่ยนไปเป็นที่ปรึกษาห้องอื่น
+  removed //ถูกถอดออกจากการเป็นที่ปรึกษา
+}
+
+enum Term {
+  semester1 // ภาคเรียนที่ 1
+  semester2 // ภาคเรียนที่ 2
+  summer // ภาคฤดูร้อน
+}
+
+enum ClassroomType {
+  normal // ห้องเรียนปกติ
+  lab // ห้องปฏิบัติการ
+  auditorium // ห้องประชุม
+  library // ห้องสมุด
+  gym // โรงยิม
+  cafeteria // โรงอาหาร
+  office // สำนักงาน
+}
+
+enum day {
+  monday
+  tuesday
+  wednesday
+  thursday
+  friday
+}
+
+// ผู้ใช้ระบบ
+model User {
+  id       Int    @id @default(autoincrement())
+  username String @unique
+  email    String @unique
+  password String
+  role     Role
+
+  firstName String
+  lastName  String
+  birthDate DateTime
+  gender    String
+  address   String
+  phone     String
+  imageId   Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  teacher Teacher?
+  student Student?
+  parent  Parent?
+  image   Image?   @relation(fields: [imageId], references: [id])
+}
+
+// ครู
+model Teacher {
+  id           Int           @id @default(autoincrement())
+  userId       Int           @unique
+  departmentId Int //แผนกวิชา
+  status       StatusTeacher @default(active)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relationships
+  department Departments @relation(fields: [departmentId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
+
+  StudentAdvisor StudentAdvisor[]
+  classSchedule  ClassSchedule[]
+}
+
+//นักเรียน
+model Student {
+  id        Int           @id @default(autoincrement())
+  userId    Int           @unique
+  classId   Int
+  status    StatusStudent @default(active)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  // Relationships
+  user       User        @relation(fields: [userId], references: [id])
+  classGroup ClassGroups @relation(fields: [classId], references: [id])
+
+  StudentAdvisor StudentAdvisor[]
+  StudentParents StudentParents[]
+  grade          Grade[]
+  gradeHistory   GradeHistory[]
+  StudentActiviti StudentActiviti[]
+}
+
+//ผู้ปกครอง
+model Parent {
+  id        Int          @id @default(autoincrement())
+  userId    Int          @unique
+  status    StatusParent @default(active)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  // Relationships
+  user           User             @relation(fields: [userId], references: [id])
+
+  StudentParents StudentParents[]
+}
+
+//นักเรียน-ครูที่ปรึกษา
+model StudentAdvisor {
+  id            Int           @id @default(autoincrement())
+  studentId     Int
+  teacherId     Int
+  advisorRole   AdvisorRole   @default(homeroom)
+  advisorStatus AdvisorStatus @default(active)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relationships
+  student Student @relation(fields: [studentId], references: [id])
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+}
+
+//นักเรียน-ผู้ปกครอง
+model StudentParents {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  parentId  Int
+  idPrimary Boolean @default(false) // true = ผู้ปกครองหลัก
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  student Student @relation(fields: [studentId], references: [id])
+  parent  Parent  @relation(fields: [parentId], references: [id])
+}
+
+//วิชา
+model Subject {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  code      String   @unique
+  credits   Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  grade         Grade[]
+  gradeHistory  GradeHistory[]
+  classSchedule ClassSchedule[]
+}
+
+//เกรด
+model Grade {
+  id             Int      @id @default(autoincrement())
+  studentId      Int
+  subjectId      Int
+  term           Term
+  academicYear   Int // ปีการศึกษา
+  grade          Float
+  gradeHistoryId Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relationships
+  student Student      @relation(fields: [studentId], references: [id])
+  subject Subject      @relation(fields: [subjectId], references: [id])
+  history GradeHistory @relation(fields: [gradeHistoryId], references: [id])
+
+  @@unique([studentId, subjectId, term, academicYear]) // กันซ้ำ
+}
+
+// ประวัติเกรดของแต่ละวิชา
+model GradeHistory {
+  id           Int      @id @default(autoincrement())
+  studentId    Int
+  subjectId    Int
+  term         Term
+  academicYear Int // ปีการศึกษา
+  grade        Float
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relationships
+  student Student @relation(fields: [studentId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+  Grade   Grade[]
+}
+
+//ตารางเรียน
+model ClassSchedule {
+  id           Int @id @default(autoincrement())
+  classGroupId Int
+  subjectId    Int
+  teacherId    Int
+  classroomId  Int
+  dayOfWeek    day
+  startTime    DateTime
+  endTime      DateTime
+  term         Term
+  academicYear Int // ปีการศึกษา
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  //relationships
+  classGroup ClassGroups @relation(fields: [classGroupId], references: [id])
+  subject    Subject     @relation(fields: [subjectId], references: [id])
+  teacher    Teacher     @relation(fields: [teacherId], references: [id])
+  classroom  Classroom   @relation(fields: [classroomId], references: [id])
+}
+
+//กิจกรรม
+model Activiti {
+  id Int @id @default(autoincrement())
+  name String
+  description String
+  startDate DateTime
+  endDate DateTime
+  location String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+
+  // Relationships
+  studentActiviti StudentActiviti[]
+}
+
+//กิจกรรม-นักเรียน
+model StudentActiviti {
+  id Int @id @default(autoincrement())
+  studentId Int
+  activitiId Int
+  participationStatus Boolean @default(true)
+  note String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  student Student @relation(fields: [studentId], references: [id])
+  activiti Activiti @relation(fields: [activitiId], references: [id])
+}
+
+//ร้านค้า
+model Shop {
+  id Int @id @default(autoincrement())
+  name String
+  price Float
+  categoryId Int
+  description String
+  imageId   Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  category Category @relation(fields: [categoryId], references: [id])
+  image    Image?   @relation(fields: [imageId], references: [id])
+}
+
+//แผนกวิชา
+model Departments {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  teacher Teacher[]
+}
+
+//ชั้นเรียน ของนักเรียน เช่น ม.1/1, ม.2/2
+model ClassGroups {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  student       Student[]
+  classSchedule ClassSchedule[]
+}
+
+//ห้องเรียน
+model Classroom {
+  id          Int           @id @default(autoincrement())
+  name        String
+  bulidingsId Int
+  floor       Int
+  type        ClassroomType
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relationships
+  buildings Buildings @relation(fields: [bulidingsId], references: [id])
+
+  classSchedule ClassSchedule[]
+}
+
+model Buildings {
+  id        Int      @id @default(autoincrement())
+  name      String
+  code      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  classroom Classroom[]
+}
+
+//ประเภทของร้านค้า
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  shop Shop[]
+}
+
+//รูปภาพ
+model Image {
+  id         Int      @id @default(autoincrement())
+  asset_id   String
+  public_id  String
+  url        String
+  secure_url String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relationships
+  user User[]
+  shop Shop[]
+}

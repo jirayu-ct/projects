@@ -1,0 +1,369 @@
+// Enums
+enum Permission {
+  VIEW_DASHBOARD
+  MANAGE_PROFILE
+  MANAGE_USERS
+  MANAGE_ROLES
+  MANAGE_PERMISSIONS
+  MANAGE_STUDENTS
+  MANAGE_GRADES
+  MANAGE_SCHEDULES
+  VIEW_GRADES
+  VIEW_SCHEDULES
+  VIEW_CHILD_GRADES
+  VIEW_CHILD_SCHEDULES
+}
+
+enum Role {
+  admin
+  teacher
+  student
+  parent
+}
+
+enum StatusStudent {
+  active
+  graduated
+  suspended
+  resigned
+  expelled
+  transferred
+}
+
+enum StatusTeacher {
+  active
+  retired
+  resigned
+  suspended
+  expelled
+  transferred
+}
+
+enum StatusParent {
+  active
+  inactive
+  deceased
+}
+
+enum AdvisorRole {
+  homeroom
+  counselor
+  special
+  temporary
+}
+
+enum AdvisorStatus {
+  active
+  inactive
+  transferred
+  removed
+}
+
+enum Term {
+  semester1
+  semester2
+  summer
+}
+
+enum ClassroomType {
+  normal
+  lab
+  auditorium
+  library
+  gym
+  cafeteria
+  office
+}
+
+enum Day {
+  monday
+  tuesday
+  wednesday
+  thursday
+  friday
+}
+
+// Tables
+Table User {
+  id int [pk, increment]
+  username string [unique]
+  email string [unique]
+  password string
+  firstName string
+  lastName string
+  birthDate datetime
+  gender string
+  address string
+  phone string
+  enabled boolean [default: true]
+  imageId int [ref: > Image.id]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บข้อมูลผู้ใช้ระบบทั้งหมด ทั้งครู นักเรียน และผู้ปกครอง'
+}
+
+Table UserRole {
+  id int [pk, increment]
+  userId int [ref: > User.id]
+  role Role
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  indexes {
+    (userId, role) [unique]
+  }
+  note: 'ตารางเก็บบทบาทของผู้ใช้ระบบ (admin, teacher, student, parent)'
+}
+
+Table RolePermission {
+  id int [pk, increment]
+  role Role
+  permission Permission
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  indexes {
+    (role, permission) [unique]
+  }
+  note: 'ตารางเก็บสิทธิ์การเข้าถึงของแต่ละบทบาท'
+}
+
+Table Teacher {
+  id int [pk, increment]
+  userId int [unique, ref: > User.id]
+  departmentId int [ref: > Departments.id]
+  status StatusTeacher [default: 'active']
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บข้อมูลครู อาจารย์'
+}
+
+Table Student {
+  id int [pk, increment]
+  userId int [unique, ref: > User.id]
+  classId int [ref: > ClassGroups.id]
+  status StatusStudent [default: 'active']
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  indexes {
+    classId
+  }
+  note: 'ตารางเก็บข้อมูลนักเรียน'
+}
+
+Table Parent {
+  id int [pk, increment]
+  userId int [unique, ref: > User.id]
+  status StatusParent [default: 'active']
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  indexes {
+    status
+  }
+  note: 'ตารางเก็บข้อมูลผู้ปกครอง'
+}
+
+Table StudentAdvisor {
+  id int [pk, increment]
+  studentId int [ref: > Student.id]
+  teacherId int [ref: > Teacher.id]
+  advisorRole AdvisorRole [default: 'homeroom']
+  advisorStatus AdvisorStatus [default: 'active']
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บความสัมพันธ์ระหว่างนักเรียนกับครูที่ปรึกษา'
+}
+
+Table StudentParents {
+  id int [pk, increment]
+  studentId int [ref: > Student.id]
+  parentId int [ref: > Parent.id]
+  isPrimary boolean [default: false]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  indexes {
+    (studentId, parentId) [unique]
+    (studentId, isPrimary)
+  }
+  note: 'ตารางเก็บความสัมพันธ์ระหว่างนักเรียนกับผู้ปกครอง'
+}
+
+Table Subject {
+  id int [pk, increment]
+  name string [unique]
+  code string [unique]
+  credits int
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บข้อมูลวิชาเรียน'
+}
+
+Table Grade {
+  id int [pk, increment]
+  studentId int [ref: > Student.id]
+  subjectId int [ref: > Subject.id]
+  term Term
+  academicYear int
+  grade float
+  gradeHistoryId int [ref: > GradeHistory.id]
+  status string
+  isFixed boolean [default: false]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  indexes {
+    (studentId, subjectId, term, academicYear) [unique]
+  }
+  note: 'ตารางเก็บเกรดของนักเรียนในแต่ละวิชา'
+}
+
+Table GradeHistory {
+  id int [pk, increment]
+  studentId int [ref: > Student.id]
+  subjectId int [ref: > Subject.id]
+  term Term
+  academicYear int
+  grade float
+  note string
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บประวัติการเปลี่ยนแปลงเกรด'
+}
+
+Table ClassSchedule {
+  id int [pk, increment]
+  classGroupId int [ref: > ClassGroups.id]
+  subjectId int [ref: > Subject.id]
+  teacherId int [ref: > Teacher.id]
+  classroomId int [ref: > Classroom.id]
+  dayOfWeek Day
+  startTime datetime
+  endTime datetime
+  term Term
+  academicYear int
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บตารางเรียนของแต่ละห้อง'
+}
+
+Table Activiti {
+  id int [pk, increment]
+  name string
+  description string
+  startDate datetime
+  endDate datetime
+  location string
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บข้อมูลกิจกรรมต่างๆ ของโรงเรียน'
+}
+
+Table StudentActiviti {
+  id int [pk, increment]
+  studentId int [ref: > Student.id]
+  activitiId int [ref: > Activiti.id]
+  participationStatus boolean [default: true]
+  note string
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บข้อมูลการเข้าร่วมกิจกรรมของนักเรียน'
+}
+
+Table Shop {
+  id int [pk, increment]
+  name string
+  price float
+  categoryId int [ref: > Category.id]
+  description string
+  imageId int [ref: > Image.id]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บข้อมูลสินค้าในร้านค้า'
+}
+
+Table Departments {
+  id int [pk, increment]
+  name string
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บข้อมูลแผนกวิชา'
+}
+
+Table ClassGroups {
+  id int [pk, increment]
+  name string
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บข้อมูลห้องเรียน (เช่น ม.1/1, ม.2/2)'
+}
+
+Table Classroom {
+  id int [pk, increment]
+  name string
+  bulidingsId int [ref: > Buildings.id]
+  floor int
+  type ClassroomType
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บข้อมูลห้องเรียน (เช่น ห้องปฏิบัติการ, ห้องประชุม)'
+}
+
+Table Buildings {
+  id int [pk, increment]
+  name string
+  code string [unique]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บข้อมูลอาคารเรียน'
+}
+
+Table Category {
+  id int [pk, increment]
+  name string
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บประเภทของสินค้า'
+}
+
+Table Image {
+  id int [pk, increment]
+  asset_id string
+  public_id string
+  url string
+  secure_url string
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บข้อมูลรูปภาพ'
+}
+
+Table Attendance {
+  id int [pk, increment]
+  studentId int [ref: > Student.id]
+  date datetime
+  status string
+  note string
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บข้อมูลการเข้าเรียนของนักเรียน'
+}
+
+Table Behavior {
+  id int [pk, increment]
+  studentId int [ref: > Student.id]
+  type string
+  description string
+  date datetime
+  teacherId int [ref: > Teacher.id]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บข้อมูลพฤติกรรมของนักเรียน'
+}
+
+Table Notification {
+  id int [pk, increment]
+  userId int [ref: > User.id]
+  type string
+  title string
+  message string
+  isRead boolean [default: false]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime
+  note: 'ตารางเก็บข้อมูลการแจ้งเตือน'
+} 
